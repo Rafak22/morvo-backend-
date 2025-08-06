@@ -1,4 +1,3 @@
-@"
 from fastapi import FastAPI
 
 app = FastAPI(title="MORVO Phase 6")
@@ -10,4 +9,3 @@ def root():
 @app.get("/dashboard")  
 def dashboard():
     return {"message": "Dashboard endpoint working"}
-"@ > main.py
