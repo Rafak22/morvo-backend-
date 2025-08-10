@@ -18,19 +18,20 @@ logger = logging.getLogger(__name__)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 RAILWAY_ENVIRONMENT = os.getenv("RAILWAY_ENVIRONMENT", "development")
 
-# Configure OpenAI client
+       # Configure OpenAI client
 if OPENAI_API_KEY:
-    openai.api_key = OPENAI_API_KEY
+    client = openai.OpenAI(api_key=OPENAI_API_KEY)
     logger.info("OpenAI client configured")
 else:
     logger.warning("OpenAI API key not found - AI features will be disabled")
+    client = None
 
 async def get_openai_response(message: str, user_id: str = "anonymous") -> str:
     """Get AI response from OpenAI"""
     try:
-        if not OPENAI_API_KEY:
+        if not client:
             return "I'm sorry, but I'm currently experiencing technical difficulties. Please try again later."
-        
+
         # Create a MORVO-specific system message
         system_message = """You are MORVO, an ROI Marketing Strategist and AI Consultant. You specialize in:
         - Marketing strategy and ROI optimization
@@ -38,11 +39,11 @@ async def get_openai_response(message: str, user_id: str = "anonymous") -> str:
         - Customer acquisition and retention
         - Data-driven marketing decisions
         - Brand development and positioning
-        
-        Always respond in a professional, helpful manner. If the user asks in Arabic, respond in Arabic. 
+
+        Always respond in a professional, helpful manner. If the user asks in Arabic, respond in Arabic.
         If they ask in English, respond in English. Provide actionable, practical advice."""
-        
-        response = openai.ChatCompletion.create(
+
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": system_message},
@@ -51,9 +52,9 @@ async def get_openai_response(message: str, user_id: str = "anonymous") -> str:
             max_tokens=500,
             temperature=0.7
         )
-        
+
         return response.choices[0].message.content.strip()
-        
+
     except Exception as e:
         logger.error(f"OpenAI API error: {e}")
         return f"I'm sorry, but I encountered an error while processing your request. Please try again later. (Error: {str(e)})"
