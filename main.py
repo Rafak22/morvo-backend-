@@ -89,6 +89,11 @@ def health():
         logger.error(f"Health endpoint error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/ping")
+def ping():
+    """Simple ping endpoint for Railway health checks"""
+    return {"pong": True}
+
 @app.get("/test")
 def test():
     """Test endpoint with environment info"""
