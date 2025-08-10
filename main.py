@@ -12,6 +12,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Environment variables
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+RAILWAY_ENVIRONMENT = os.getenv("RAILWAY_ENVIRONMENT", "development")
+
 # Create FastAPI app with error handling
 try:
     app = FastAPI(title="MORVO Backend", version="1.0.0")
@@ -66,8 +70,17 @@ async def startup_event():
         logger.info("=== MORVO Backend Starting Up ===")
         logger.info(f"Python version: {os.sys.version}")
         logger.info(f"Working directory: {os.getcwd()}")
-        logger.info(f"Environment: {os.environ.get('RAILWAY_ENVIRONMENT', 'development')}")
+        logger.info(f"Environment: {RAILWAY_ENVIRONMENT}")
         logger.info(f"Port: {os.environ.get('PORT', '8000')}")
+        
+        # Check OpenAI API key
+        if OPENAI_API_KEY:
+            logger.info("✅ OpenAI API key is configured")
+            # Mask the key for security
+            masked_key = OPENAI_API_KEY[:8] + "..." + OPENAI_API_KEY[-4:] if len(OPENAI_API_KEY) > 12 else "***"
+            logger.info(f"OpenAI API key: {masked_key}")
+        else:
+            logger.warning("⚠️ OpenAI API key not found - AI features will be disabled")
         
         # Test basic imports
         try:
@@ -120,6 +133,15 @@ def ping():
     """Simple ping endpoint for Railway health checks"""
     return {"pong": True}
 
+@app.get("/api-status")
+def api_status():
+    """Check API key status"""
+    return {
+        "openai_configured": bool(OPENAI_API_KEY),
+        "environment": RAILWAY_ENVIRONMENT,
+        "status": "ready"
+    }
+
 @app.options("/{path:path}")
 async def options_handler(request: Request):
     """Handle OPTIONS requests for CORS preflight"""
@@ -157,7 +179,7 @@ def test():
         return {
             "message": "Test endpoint working",
             "port": os.environ.get("PORT", "8000"),
-            "environment": os.environ.get("RAILWAY_ENVIRONMENT", "development"),
+            "environment": RAILWAY_ENVIRONMENT,
             "python_version": os.sys.version,
             "working_directory": os.getcwd()
         }
@@ -187,6 +209,10 @@ def debug():
                 "title": app.title,
                 "version": app.version,
                 "debug": app.debug
+            },
+            "api": {
+                "openai_configured": bool(OPENAI_API_KEY),
+                "environment": RAILWAY_ENVIRONMENT
             }
         }
     except Exception as e:
