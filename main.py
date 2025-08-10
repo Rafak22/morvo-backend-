@@ -119,6 +119,34 @@ def root():
         logger.error(f"Root endpoint error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/")
+async def root_chat(request: Request):
+    """Handle chat requests to root endpoint"""
+    try:
+        body = await request.json()
+        query = body.get("message", "")
+        
+        logger.info(f"Root chat query received: {query}")
+        
+        response_text = f"Hello! I'm MORVO. I received your message: '{query}'. I'm currently in development mode and will provide AI-powered responses soon!"
+        
+        return {
+            "response": response_text,
+            "status": "success",
+            "assistant": "MORVO",
+            "endpoint": "/",
+            "timestamp": "2025-08-10T12:06:00Z"
+        }
+    except Exception as e:
+        logger.error(f"Root chat endpoint error: {e}")
+        logger.error(traceback.format_exc())
+        return {
+            "response": "I'm sorry, but I encountered an error processing your request. Please try again.",
+            "status": "error",
+            "error": str(e),
+            "timestamp": "2025-08-10T12:06:00Z"
+        }
+
 @app.get("/health")
 def health():
     """Health check endpoint"""
@@ -373,6 +401,74 @@ async def morvo_chat(request: Request):
         logger.error(traceback.format_exc())
         return {
             "response": "I'm sorry, but I encountered an error processing your request. Please try again.",
+            "status": "error",
+            "error": str(e),
+            "timestamp": "2025-08-10T12:06:00Z"
+        }
+
+# Add a catch-all chat endpoint that handles any POST request to /api/*
+@app.post("/api/{path:path}")
+async def catch_all_api(request: Request, path: str):
+    """Catch-all endpoint for any API calls"""
+    try:
+        logger.info(f"Catch-all API endpoint called: /api/{path}")
+        
+        # If it's a chat-related path, handle it
+        if "chat" in path.lower():
+            body = await request.json()
+            query = body.get("message", "")
+            
+            response_text = f"Hello! I'm MORVO. I received your message: '{query}'. I'm currently in development mode and will provide AI-powered responses soon!"
+            
+            return {
+                "response": response_text,
+                "status": "success",
+                "assistant": "MORVO",
+                "endpoint": f"/api/{path}",
+                "timestamp": "2025-08-10T12:06:00Z"
+            }
+        
+        # For other API calls, return a generic response
+        return {
+            "message": f"API endpoint /api/{path} called",
+            "status": "success",
+            "timestamp": "2025-08-10T12:06:00Z"
+        }
+        
+    except Exception as e:
+        logger.error(f"Catch-all API endpoint error: {e}")
+        logger.error(traceback.format_exc())
+        return {
+            "response": "I'm sorry, but I encountered an error processing your request. Please try again.",
+            "status": "error",
+            "error": str(e),
+            "timestamp": "2025-08-10T12:06:00Z"
+        }
+
+# Add a simple test chat endpoint that doesn't depend on any external services
+@app.post("/test-chat")
+async def test_chat(request: Request):
+    """Simple test chat endpoint for debugging"""
+    try:
+        body = await request.json()
+        query = body.get("message", "")
+        
+        logger.info(f"Test chat query received: {query}")
+        
+        # Simple response without any external dependencies
+        response_text = f"Test successful! I received: '{query}'. This endpoint is working correctly."
+        
+        return {
+            "response": response_text,
+            "status": "success",
+            "endpoint": "/test-chat",
+            "timestamp": "2025-08-10T12:06:00Z"
+        }
+    except Exception as e:
+        logger.error(f"Test chat endpoint error: {e}")
+        logger.error(traceback.format_exc())
+        return {
+            "response": f"Test failed with error: {str(e)}",
             "status": "error",
             "error": str(e),
             "timestamp": "2025-08-10T12:06:00Z"
