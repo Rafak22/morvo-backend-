@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import os
@@ -20,18 +20,44 @@ except Exception as e:
     logger.error(f"Failed to create FastAPI app: {e}")
     raise
 
-# Add CORS middleware
+# Add CORS middleware with specific origins
 try:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=[
+            "https://magic.lovable.app",
+            "http://magic.lovable.app",
+            "https://lovable.app",
+            "http://lovable.app",
+            "https://*.lovable.app",
+            "http://*.lovable.app",
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://localhost:8000",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:8000",
+            "*"  # Allow all origins for development
+        ],
         allow_credentials=True,
-        allow_methods=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
         allow_headers=["*"],
+        expose_headers=["*"]
     )
-    logger.info("CORS middleware added successfully")
+    logger.info("CORS middleware added successfully with magic.lovable.app support")
 except Exception as e:
     logger.error(f"Failed to add CORS middleware: {e}")
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all incoming requests for debugging"""
+    logger.info(f"Incoming request: {request.method} {request.url}")
+    logger.info(f"Origin: {request.headers.get('origin', 'No origin')}")
+    logger.info(f"User-Agent: {request.headers.get('user-agent', 'No user-agent')}")
+    
+    response = await call_next(request)
+    
+    logger.info(f"Response status: {response.status_code}")
+    return response
 
 @app.on_event("startup")
 async def startup_event():
@@ -93,6 +119,36 @@ def health():
 def ping():
     """Simple ping endpoint for Railway health checks"""
     return {"pong": True}
+
+@app.options("/{path:path}")
+async def options_handler(request: Request):
+    """Handle OPTIONS requests for CORS preflight"""
+    logger.info(f"OPTIONS request received for: {request.url}")
+    return JSONResponse(
+        content={"message": "CORS preflight handled"},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Credentials": "true"
+        }
+    )
+
+@app.get("/cors-test")
+def cors_test(request: Request):
+    """Test endpoint to check CORS configuration"""
+    origin = request.headers.get("origin", "No origin")
+    return {
+        "message": "CORS test successful",
+        "origin": origin,
+        "cors_enabled": True,
+        "allowed_origins": [
+            "https://magic.lovable.app",
+            "http://magic.lovable.app",
+            "https://lovable.app",
+            "http://lovable.app"
+        ]
+    }
 
 @app.get("/test")
 def test():
