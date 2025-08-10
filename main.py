@@ -4,6 +4,8 @@ from fastapi.responses import JSONResponse
 import os
 import logging
 import traceback
+import openai
+import json
 
 # Configure logging
 logging.basicConfig(
@@ -15,6 +17,46 @@ logger = logging.getLogger(__name__)
 # Environment variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 RAILWAY_ENVIRONMENT = os.getenv("RAILWAY_ENVIRONMENT", "development")
+
+# Configure OpenAI client
+if OPENAI_API_KEY:
+    openai.api_key = OPENAI_API_KEY
+    logger.info("OpenAI client configured")
+else:
+    logger.warning("OpenAI API key not found - AI features will be disabled")
+
+async def get_openai_response(message: str, user_id: str = "anonymous") -> str:
+    """Get AI response from OpenAI"""
+    try:
+        if not OPENAI_API_KEY:
+            return "I'm sorry, but I'm currently experiencing technical difficulties. Please try again later."
+        
+        # Create a MORVO-specific system message
+        system_message = """You are MORVO, an ROI Marketing Strategist and AI Consultant. You specialize in:
+        - Marketing strategy and ROI optimization
+        - Digital marketing campaigns
+        - Customer acquisition and retention
+        - Data-driven marketing decisions
+        - Brand development and positioning
+        
+        Always respond in a professional, helpful manner. If the user asks in Arabic, respond in Arabic. 
+        If they ask in English, respond in English. Provide actionable, practical advice."""
+        
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": message}
+            ],
+            max_tokens=500,
+            temperature=0.7
+        )
+        
+        return response.choices[0].message.content.strip()
+        
+    except Exception as e:
+        logger.error(f"OpenAI API error: {e}")
+        return f"I'm sorry, but I encountered an error while processing your request. Please try again later. (Error: {str(e)})"
 
 # Create FastAPI app with error handling
 try:
@@ -128,7 +170,7 @@ async def root_chat(request: Request):
         
         logger.info(f"Root chat query received: {query}")
         
-        response_text = f"Hello! I'm MORVO. I received your message: '{query}'. I'm currently in development mode and will provide AI-powered responses soon!"
+        response_text = await get_openai_response(query, "anonymous")
         
         return {
             "response": response_text,
@@ -298,18 +340,8 @@ async def chat_query(request: Request):
         
         logger.info(f"Chat query received from {user_id}: {query}")
         
-        # Check if OpenAI is configured
-        if not OPENAI_API_KEY:
-            return {
-                "response": "I'm sorry, but I'm currently experiencing technical difficulties. Please try again later.",
-                "status": "error",
-                "error": "OpenAI API not configured",
-                "timestamp": "2025-08-10T12:06:00Z"
-            }
-        
-        # For now, return a simple response
-        # TODO: Integrate with OpenAI API for actual AI responses
-        response_text = f"I received your message: '{query}'. I'm currently in development mode and will provide AI-powered responses soon!"
+        # Get AI response from OpenAI
+        response_text = await get_openai_response(query, user_id)
         
         return {
             "response": response_text,
@@ -338,17 +370,8 @@ async def api_chat_query(request: Request):
         
         logger.info(f"API chat query received from {user_id}: {query}")
         
-        # Check if OpenAI is configured
-        if not OPENAI_API_KEY:
-            return {
-                "response": "Service temporarily unavailable. Please try again later.",
-                "status": "error",
-                "error": "OpenAI API not configured",
-                "timestamp": "2025-08-10T12:06:00Z"
-            }
-        
-        # For now, return a simple response
-        response_text = f"API Response: I received '{query}'. AI integration coming soon!"
+        # Get AI response from OpenAI
+        response_text = await get_openai_response(query, user_id)
         
         return {
             "response": response_text,
@@ -377,17 +400,8 @@ async def morvo_chat(request: Request):
         
         logger.info(f"MORVO chat query received from {user_id}: {query}")
         
-        # Check if OpenAI is configured
-        if not OPENAI_API_KEY:
-            return {
-                "response": "I'm MORVO, your ROI Marketing Strategist and AI Consultant. I'm currently experiencing technical difficulties. Please try again later.",
-                "status": "error",
-                "error": "OpenAI API not configured",
-                "timestamp": "2025-08-10T12:06:00Z"
-            }
-        
-        # For now, return a MORVO-branded response
-        response_text = f"Hello! I'm MORVO, your ROI Marketing Strategist and AI Consultant. I received your message: '{query}'. I'm currently in development mode and will provide AI-powered marketing insights soon!"
+        # Get AI response from OpenAI
+        response_text = await get_openai_response(query, user_id)
         
         return {
             "response": response_text,
@@ -418,7 +432,7 @@ async def catch_all_api(request: Request, path: str):
             body = await request.json()
             query = body.get("message", "")
             
-            response_text = f"Hello! I'm MORVO. I received your message: '{query}'. I'm currently in development mode and will provide AI-powered responses soon!"
+            response_text = await get_openai_response(query, "anonymous")
             
             return {
                 "response": response_text,
@@ -455,8 +469,8 @@ async def test_chat(request: Request):
         
         logger.info(f"Test chat query received: {query}")
         
-        # Simple response without any external dependencies
-        response_text = f"Test successful! I received: '{query}'. This endpoint is working correctly."
+        # Get AI response from OpenAI
+        response_text = await get_openai_response(query, "test_user")
         
         return {
             "response": response_text,
