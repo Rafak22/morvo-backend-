@@ -219,6 +219,45 @@ def debug():
         logger.error(f"Debug endpoint error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/endpoints")
+def list_endpoints():
+    """List all available endpoints for debugging"""
+    try:
+        routes = []
+        for route in app.routes:
+            if hasattr(route, 'methods') and hasattr(route, 'path'):
+                routes.append({
+                    "path": route.path,
+                    "methods": list(route.methods),
+                    "name": route.name or "unnamed"
+                })
+        
+        return {
+            "status": "success",
+            "total_endpoints": len(routes),
+            "endpoints": routes,
+            "chat_endpoints": [
+                "/chat",
+                "/api/chat", 
+                "/api/morvo/chat"
+            ],
+            "data_endpoints": [
+                "/api/seo-signals",
+                "/api/mentions",
+                "/api/posts",
+                "/api/supabase-status",
+                "/api/all-data"
+            ],
+            "timestamp": "2025-08-10T12:06:00Z"
+        }
+    except Exception as e:
+        logger.error(f"Endpoints list error: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "timestamp": "2025-08-10T12:06:00Z"
+        }
+
 @app.post("/chat")
 async def chat_query(request: Request):
     """Handle chat queries from the frontend"""
@@ -226,18 +265,40 @@ async def chat_query(request: Request):
         # Get the request body
         body = await request.json()
         query = body.get("message", "")
-        logger.info(f"Chat query received: {query}")
+        user_id = body.get("user_id", "anonymous")
+        session_id = body.get("session_id", "default")
+        
+        logger.info(f"Chat query received from {user_id}: {query}")
+        
+        # Check if OpenAI is configured
+        if not OPENAI_API_KEY:
+            return {
+                "response": "I'm sorry, but I'm currently experiencing technical difficulties. Please try again later.",
+                "status": "error",
+                "error": "OpenAI API not configured",
+                "timestamp": "2025-08-10T12:06:00Z"
+            }
         
         # For now, return a simple response
-        # You can integrate with OpenAI here later
+        # TODO: Integrate with OpenAI API for actual AI responses
+        response_text = f"I received your message: '{query}'. I'm currently in development mode and will provide AI-powered responses soon!"
+        
         return {
-            "response": f"Received your query: {query}",
+            "response": response_text,
             "status": "success",
+            "user_id": user_id,
+            "session_id": session_id,
             "timestamp": "2025-08-10T12:06:00Z"
         }
     except Exception as e:
         logger.error(f"Chat endpoint error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(traceback.format_exc())
+        return {
+            "response": "I'm sorry, but I encountered an error processing your request. Please try again.",
+            "status": "error",
+            "error": str(e),
+            "timestamp": "2025-08-10T12:06:00Z"
+        }
 
 @app.post("/api/chat")
 async def api_chat_query(request: Request):
@@ -245,16 +306,77 @@ async def api_chat_query(request: Request):
     try:
         body = await request.json()
         query = body.get("message", "")
-        logger.info(f"API chat query received: {query}")
+        user_id = body.get("user_id", "anonymous")
+        
+        logger.info(f"API chat query received from {user_id}: {query}")
+        
+        # Check if OpenAI is configured
+        if not OPENAI_API_KEY:
+            return {
+                "response": "Service temporarily unavailable. Please try again later.",
+                "status": "error",
+                "error": "OpenAI API not configured",
+                "timestamp": "2025-08-10T12:06:00Z"
+            }
+        
+        # For now, return a simple response
+        response_text = f"API Response: I received '{query}'. AI integration coming soon!"
         
         return {
-            "response": f"API response to: {query}",
+            "response": response_text,
             "status": "success",
+            "user_id": user_id,
             "timestamp": "2025-08-10T12:06:00Z"
         }
     except Exception as e:
         logger.error(f"API chat endpoint error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(traceback.format_exc())
+        return {
+            "response": "An error occurred while processing your request.",
+            "status": "error",
+            "error": str(e),
+            "timestamp": "2025-08-10T12:06:00Z"
+        }
+
+# Add a catch-all endpoint for any chat-related requests
+@app.post("/api/morvo/chat")
+async def morvo_chat(request: Request):
+    """MORVO-specific chat endpoint"""
+    try:
+        body = await request.json()
+        query = body.get("message", "")
+        user_id = body.get("user_id", "anonymous")
+        
+        logger.info(f"MORVO chat query received from {user_id}: {query}")
+        
+        # Check if OpenAI is configured
+        if not OPENAI_API_KEY:
+            return {
+                "response": "I'm MORVO, your ROI Marketing Strategist and AI Consultant. I'm currently experiencing technical difficulties. Please try again later.",
+                "status": "error",
+                "error": "OpenAI API not configured",
+                "timestamp": "2025-08-10T12:06:00Z"
+            }
+        
+        # For now, return a MORVO-branded response
+        response_text = f"Hello! I'm MORVO, your ROI Marketing Strategist and AI Consultant. I received your message: '{query}'. I'm currently in development mode and will provide AI-powered marketing insights soon!"
+        
+        return {
+            "response": response_text,
+            "status": "success",
+            "assistant": "MORVO",
+            "user_id": user_id,
+            "timestamp": "2025-08-10T12:06:00Z"
+        }
+    except Exception as e:
+        logger.error(f"MORVO chat endpoint error: {e}")
+        logger.error(traceback.format_exc())
+        return {
+            "response": "I'm sorry, but I encountered an error processing your request. Please try again.",
+            "status": "error",
+            "error": str(e),
+            "timestamp": "2025-08-10T12:06:00Z"
+        }
 
 # Supabase Table Endpoints
 @app.get("/api/seo-signals")
