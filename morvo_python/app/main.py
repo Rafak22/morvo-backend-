@@ -1,11 +1,20 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="MORVO Phase 6")
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def root():
-    return {"message": "MORVO Phase 6 Working", "status": "success"}
+    return {"message": "MORVO Working", "status": "success"}
 
-@app.get("/dashboard")  
-def dashboard():
-    return {"message": "Dashboard endpoint working"}
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
