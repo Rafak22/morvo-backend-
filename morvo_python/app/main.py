@@ -20,7 +20,6 @@ def root():
 def health():
     return {"status": "healthy"}
 
-# Add this for Railway port:
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
