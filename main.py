@@ -219,6 +219,43 @@ def debug():
         logger.error(f"Debug endpoint error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/chat")
+async def chat_query(request: Request):
+    """Handle chat queries from the frontend"""
+    try:
+        # Get the request body
+        body = await request.json()
+        query = body.get("message", "")
+        logger.info(f"Chat query received: {query}")
+        
+        # For now, return a simple response
+        # You can integrate with OpenAI here later
+        return {
+            "response": f"Received your query: {query}",
+            "status": "success",
+            "timestamp": "2025-08-10T12:06:00Z"
+        }
+    except Exception as e:
+        logger.error(f"Chat endpoint error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/chat")
+async def api_chat_query(request: Request):
+    """Alternative chat endpoint for API calls"""
+    try:
+        body = await request.json()
+        query = body.get("message", "")
+        logger.info(f"API chat query received: {query}")
+        
+        return {
+            "response": f"API response to: {query}",
+            "status": "success",
+            "timestamp": "2025-08-10T12:06:00Z"
+        }
+    except Exception as e:
+        logger.error(f"API chat endpoint error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Add this for Railway port:
 if __name__ == "__main__":
     try:
