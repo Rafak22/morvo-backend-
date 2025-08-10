@@ -256,6 +256,152 @@ async def api_chat_query(request: Request):
         logger.error(f"API chat endpoint error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Supabase Table Endpoints
+@app.get("/api/seo-signals")
+async def get_seo_signals(limit: int = 10, offset: int = 0):
+    """Get SEO signals data from Supabase"""
+    try:
+        from morvo_python.app.supabase_client import fetch_seo_data
+        data = await fetch_seo_data()
+        return {
+            "status": "success",
+            "count": len(data),
+            "data": data,
+            "limit": limit,
+            "offset": offset
+        }
+    except Exception as e:
+        logger.error(f"SEO signals endpoint error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/mentions")
+async def get_mentions(limit: int = 10, offset: int = 0):
+    """Get brand mentions data from Supabase"""
+    try:
+        from morvo_python.app.supabase_client import fetch_mentions_data
+        data = await fetch_mentions_data()
+        return {
+            "status": "success",
+            "count": len(data),
+            "data": data,
+            "limit": limit,
+            "offset": offset
+        }
+    except Exception as e:
+        logger.error(f"Mentions endpoint error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/posts")
+async def get_posts(limit: int = 10, offset: int = 0):
+    """Get social media posts data from Supabase"""
+    try:
+        from morvo_python.app.supabase_client import fetch_posts_data
+        data = await fetch_posts_data()
+        return {
+            "status": "success",
+            "count": len(data),
+            "data": data,
+            "limit": limit,
+            "offset": offset
+        }
+    except Exception as e:
+        logger.error(f"Posts endpoint error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/supabase-status")
+async def get_supabase_status():
+    """Check Supabase connection status"""
+    try:
+        from morvo_python.app.supabase_client import test_supabase_connection
+        is_connected = await test_supabase_connection()
+        return {
+            "status": "success",
+            "supabase_connected": is_connected,
+            "tables": ["seo_signals", "mentions", "posts"],
+            "timestamp": "2025-08-10T12:06:00Z"
+        }
+    except Exception as e:
+        logger.error(f"Supabase status endpoint error: {e}")
+        return {
+            "status": "error",
+            "supabase_connected": False,
+            "error": str(e),
+            "tables": ["seo_signals", "mentions", "posts"]
+        }
+
+@app.get("/api/all-data")
+async def get_all_data(limit: int = 5):
+    """Get data from all tables"""
+    try:
+        from morvo_python.app.supabase_client import fetch_seo_data, fetch_mentions_data, fetch_posts_data
+        
+        seo_data = await fetch_seo_data()
+        mentions_data = await fetch_mentions_data()
+        posts_data = await fetch_posts_data()
+        
+        return {
+            "status": "success",
+            "seo_signals": {
+                "count": len(seo_data),
+                "data": seo_data[:limit]
+            },
+            "mentions": {
+                "count": len(mentions_data),
+                "data": mentions_data[:limit]
+            },
+            "posts": {
+                "count": len(posts_data),
+                "data": posts_data[:limit]
+            },
+            "timestamp": "2025-08-10T12:06:00Z"
+        }
+    except Exception as e:
+        logger.error(f"All data endpoint error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/search")
+async def search_data(request: Request):
+    """Search across all tables"""
+    try:
+        body = await request.json()
+        query = body.get("query", "")
+        table_filter = body.get("tables", ["seo_signals", "mentions", "posts"])
+        limit = body.get("limit", 10)
+        
+        logger.info(f"Search query: {query} in tables: {table_filter}")
+        
+        results = {}
+        
+        if "seo_signals" in table_filter:
+            from morvo_python.app.supabase_client import fetch_seo_data
+            seo_data = await fetch_seo_data()
+            # Simple text search (you can enhance this with proper Supabase search)
+            filtered_seo = [item for item in seo_data if query.lower() in str(item).lower()]
+            results["seo_signals"] = filtered_seo[:limit]
+        
+        if "mentions" in table_filter:
+            from morvo_python.app.supabase_client import fetch_mentions_data
+            mentions_data = await fetch_mentions_data()
+            filtered_mentions = [item for item in mentions_data if query.lower() in str(item).lower()]
+            results["mentions"] = filtered_mentions[:limit]
+        
+        if "posts" in table_filter:
+            from morvo_python.app.supabase_client import fetch_posts_data
+            posts_data = await fetch_posts_data()
+            filtered_posts = [item for item in posts_data if query.lower() in str(item).lower()]
+            results["posts"] = filtered_posts[:limit]
+        
+        return {
+            "status": "success",
+            "query": query,
+            "results": results,
+            "total_results": sum(len(data) for data in results.values()),
+            "timestamp": "2025-08-10T12:06:00Z"
+        }
+    except Exception as e:
+        logger.error(f"Search endpoint error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Add this for Railway port:
 if __name__ == "__main__":
     try:
